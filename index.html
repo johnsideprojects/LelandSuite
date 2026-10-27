@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AA Self Storage - Management Suite</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Barlow:ital,wght@0,500;0,700;0,800;0,900;1,700&display=swap" rel="stylesheet">
+  
+  <style>
+    :root {
+      --bg-cream: #F5F3E9;
+      --card-bg: #FFFFFF;
+      --border-gray: #CBD5E1;
+      --border-yellow: #FFD100;
+      --brand-yellow: #FFD100;
+      --brand-gray: #555555;
+      --text-dark: #0F172A;
+      --nav-height: 52px;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    html, body {
+      height: 100vh;
+      width: 100vw;
+      overflow: hidden;
+      font-family: 'Barlow', sans-serif;
+      background-color: var(--bg-cream);
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* Top Master Navigation Bar */
+    .master-header {
+      height: var(--nav-height);
+      background: var(--card-bg);
+      border-bottom: 3px solid var(--border-yellow);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 16px;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.06);
+      z-index: 1000;
+      flex-shrink: 0;
+    }
+
+    .brand-section {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .brand-section img {
+      height: 32px;
+      width: auto;
+      object-fit: contain;
+    }
+
+    .brand-title-hub {
+      font-weight: 900;
+      font-size: 16px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: var(--text-dark);
+    }
+
+    .master-nav-tabs {
+      display: flex;
+      gap: 6px;
+      height: 100%;
+      align-items: flex-end;
+    }
+
+    .nav-tab {
+      background: transparent;
+      border: none;
+      padding: 10px 16px;
+      font-family: 'Barlow', sans-serif;
+      font-weight: 800;
+      font-size: 13px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: var(--brand-gray);
+      cursor: pointer;
+      border-top-left-radius: 6px;
+      border-top-right-radius: 6px;
+      border-bottom: 3px solid transparent;
+      transition: all 0.15s ease;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .nav-tab:hover {
+      background: #F8FAFC;
+      color: var(--text-dark);
+    }
+
+    .nav-tab.active {
+      background: var(--bg-cream);
+      color: var(--text-dark);
+      border-bottom: 3px solid var(--brand-yellow);
+    }
+
+    /* Main Viewport Workspace */
+    .master-viewport {
+      flex: 1;
+      width: 100%;
+      height: calc(100vh - var(--nav-height));
+      position: relative;
+    }
+
+    .app-frame {
+      width: 100%;
+      height: 100%;
+      border: none;
+      position: absolute;
+      top: 0;
+      left: 0;
+      display: none;
+    }
+
+    .app-frame.active {
+      display: block;
+    }
+
+    /* Hide Navigation during printing */
+    @media print {
+      .master-header { display: none !important; }
+      .master-viewport { height: 100vh !important; }
+      .app-frame.active { position: static !important; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- MASTER NAVIGATION HEADER -->
+  <header class="master-header">
+    <div class="brand-section">
+      <img src="AA_Logo_NoText.png" alt="AA Self Storage" onerror="this.onerror=null; this.src='aa-self-storage-logo-3c.webp';">
+      <div class="brand-title-hub">AA Self Storage Hub</div>
+    </div>
+
+    <nav class="master-nav-tabs">
+      <button class="nav-tab active" onclick="switchTab('inquiries', this)">
+        📊 Inquiry Dashboard
+      </button>
+      <button class="nav-tab" onclick="switchTab('cameras', this)">
+        📷 Camera & Map Tracker
+      </button>
+      <button class="nav-tab" onclick="switchTab('weekly', this)">
+        📝 Weekly Update Creator
+      </button>
+      <button class="nav-tab" onclick="switchTab('pricesheet', this)">
+        🏷️ Price Sheet Creator
+      </button>
+    </nav>
+  </header>
+
+  <!-- MASTER VIEWPORT CONTAINER -->
+  <main class="master-viewport">
+    <iframe id="frame-inquiries" class="app-frame active" src="Inquiries.html" title="Inquiry Dashboard"></iframe>
+    <iframe id="frame-cameras" class="app-frame" src="CameraTracker.html" title="Security Camera Map"></iframe>
+    <iframe id="frame-weekly" class="app-frame" src="WeekUpdateCreator.html" title="Weekly Update Creator"></iframe>
+    <iframe id="frame-pricesheet" class="app-frame" src="Price$heetCreator.html" title="Price Sheet Creator"></iframe>
+  </main>
+
+  <script>
+    function switchTab(tabId, btnElement) {
+      // Deactivate all nav tabs
+      document.querySelectorAll('.nav-tab').forEach(tab => tab.classList.remove('active'));
+      // Activate clicked tab
+      btnElement.classList.add('active');
+
+      // Hide all iframe frames
+      document.querySelectorAll('.app-frame').forEach(frame => frame.classList.remove('active'));
+      
+      // Show selected iframe frame
+      const targetFrame = document.getElementById(`frame-${tabId}`);
+      if (targetFrame) {
+        targetFrame.classList.add('active');
+      }
+    }
+  </script>
+</body>
+</html>

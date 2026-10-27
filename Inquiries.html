@@ -1,0 +1,1024 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Inquiry Dashboard | AA Self Storage</title>
+    <link href="https://fonts.googleapis.com/css2?family=Barlow:wght@500;700;800&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        :root {
+            --bg-off-white: #F4F1E8; 
+            --brand-gray: #555555;
+            --brand-yellow: #ffd701; 
+            --brand-red: #e74c3c;    
+            --brand-blue: #026af2;   
+            --text-dark: #363636;
+            --text-muted: #666666;
+            --text-subtle: #888888;
+            --white: #ffffff;
+            --header-height: 55px;
+            --footer-height: 26px;
+        }
+        * { box-sizing: border-box; }
+        
+        html, body { 
+            height: 100vh; 
+            max-height: 100vh;
+            margin: 0; 
+            padding: 0;
+            font-family: 'Barlow', sans-serif; 
+            background-color: var(--bg-off-white); 
+            color: var(--text-dark); 
+            line-height: 1.3; 
+            overflow: hidden; 
+            display: flex;
+            flex-direction: column;
+        }
+        
+        header { 
+            height: var(--header-height); 
+            background: var(--white); 
+            display: flex; 
+            align-items: center; 
+            justify-content: space-between; 
+            padding: 0 20px; 
+            flex-shrink: 0;
+            border-bottom: 3px solid var(--brand-yellow); 
+            box-shadow: 0 2px 8px rgba(0,0,0,0.06); 
+        }
+        .header-logo { height: 32px; display: block; }
+        .header-title { font-weight: 800; font-size: 1rem; text-transform: uppercase; letter-spacing: 0.5px; color: var(--brand-gray); }
+
+        .content-wrapper { 
+            flex: 1; 
+            max-width: 1800px; 
+            width: 100%;
+            margin: 0 auto; 
+            padding: 12px 16px; 
+            min-height: 0; 
+        }
+        
+        .dashboard-grid { 
+            display: grid; 
+            grid-template-columns: 1.1fr 1fr 0.9fr; 
+            gap: 12px; 
+            height: 100%;
+            align-items: stretch;
+        }
+
+        .widget { 
+            background: var(--white); 
+            border-radius: 8px; 
+            padding: 14px 16px; 
+            display: flex; 
+            flex-direction: column; 
+            box-shadow: 0 4px 12px rgba(0,0,0,0.04); 
+            border: 1px solid rgba(0,0,0,0.04); 
+            min-height: 0;
+        }
+        
+        .widget-header { 
+            font-weight: 800; 
+            text-transform: uppercase; 
+            font-size: 0.8rem; 
+            color: var(--brand-gray); 
+            margin-bottom: 8px; 
+            border-bottom: 2px solid var(--brand-yellow); 
+            padding-bottom: 4px; 
+            display: flex; 
+            justify-content: space-between; 
+            align-items: center; 
+            flex-shrink: 0; 
+        }
+
+        .header-title-with-icon {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .header-title-with-icon svg {
+            width: 16px;
+            height: 16px;
+            fill: var(--brand-gray);
+        }
+
+        .btn-header-action { font-size: 0.68rem; font-weight: 700; border-radius: 4px; padding: 3px 8px; cursor: pointer; border: 1px solid transparent; transition: background 0.15s; }
+        .btn-undo { color: var(--text-dark); background: #eee; border-color: #ccc; }
+        .btn-undo:hover { background: #e2e2e2; }
+        .btn-reset { color: #c0392b; background: #fdf0ef; border-color: #f5c6c2; }
+        .btn-reset:hover { background: #fad9d6; }
+
+        .dashboard-col { display: flex; flex-direction: column; gap: 12px; height: 100%; min-height: 0; }
+
+        .dashboard-col .widget:nth-child(1) { flex: 1.15; min-height: 0; }
+        .dashboard-col .widget:nth-child(2) { flex: 0.85; min-height: 0; }
+
+        .section-label { font-size: 0.65rem; font-weight: 800; color: var(--text-subtle); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px; }
+        .channel-cards { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 8px; }
+        .channel-card { 
+            background: #fff; 
+            border: 1px solid #e0e0e0; 
+            border-radius: 6px; 
+            padding: 8px; 
+            display: flex; 
+            flex-direction: column;
+            align-items: center; 
+            text-align: center;
+            gap: 4px; 
+            cursor: pointer; 
+            transition: all 0.15s ease; 
+            border-top: 3px solid var(--brand-blue); 
+        }
+        .channel-card:hover { transform: translateY(-1px); background-color: #fffdf5; border-color: var(--brand-yellow); }
+        .channel-card-icon { width: 24px; height: 24px; border-radius: 4px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; color: white; }
+        .channel-card-icon svg { width: 14px; height: 14px; fill: currentColor; }
+        .channel-card-label { font-weight: 800; font-size: 0.75rem; color: var(--text-dark); line-height: 1; }
+        .channel-card-count { font-size: 1.4rem; font-weight: 800; color: var(--text-dark); line-height: 1; }
+
+        .scoreboard { text-align: center; padding: 6px 10px; background: var(--brand-yellow); border-radius: 6px; margin-bottom: 8px; flex-shrink: 0; }
+        .scoreboard-label { font-size: 0.62rem; font-weight: 800; color: #4a3800; text-transform: uppercase; letter-spacing: 0.5px; }
+        .scoreboard-value { font-size: 1.6rem; font-weight: 800; line-height: 1; color: #1a1a00; }
+
+        .audit-label { font-size: 0.65rem; font-weight: 800; color: var(--text-subtle); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px; }
+        #inquiry-feed { 
+            flex: 1; 
+            overflow-y: auto; 
+            border-top: 1px solid #eee; 
+            padding-top: 4px; 
+            padding-bottom: 6px; 
+            margin-bottom: 2px;
+            min-height: 0; 
+        }
+        .feed-item { padding: 4px 0; border-bottom: 1px solid #f2f2f2; font-size: 0.72rem; display: flex; justify-content: space-between; align-items: center; }
+        .feed-tag { font-weight: 700; color: var(--text-dark); }
+        .feed-sub { font-size: 0.62rem; color: var(--text-subtle); }
+
+        .calendar-widget { padding: 10px 14px; }
+        #clock-display { font-size: 1.1rem; font-weight: 800; line-height: 1; }
+        .calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 3px; text-align: center; margin-top: 6px; flex: 1; }
+        .cal-dow { font-size: 0.6rem; font-weight: 800; color: var(--text-muted); padding: 1px 0; text-transform: uppercase; }
+        
+        .cal-date { 
+            position: relative;
+            font-size: 0.75rem; 
+            padding: 4px 0; 
+            border-radius: 4px; 
+            color: var(--text-dark); 
+            font-weight: 700; 
+            cursor: pointer;
+            background: #f8f8f8;
+            border: 1px solid #eee;
+            transition: all 0.15s ease;
+            user-select: none;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .cal-date:hover:not(.empty) { background: #eef4ff; border-color: var(--brand-blue); }
+        .cal-date.today { border: 2px solid var(--brand-blue); }
+        .cal-date.selected { background: var(--brand-yellow) !important; color: #1a1a00 !important; border-color: #d1b100 !important; font-weight: 800; }
+        .cal-date.empty { background: transparent; border: none; cursor: default; }
+        
+        /* Recycling Day Styling & Hover Popup */
+        .cal-date.recycling-day {
+            background-color: #d4edda !important;
+            border-color: #c3e6cb !important;
+            color: #155724 !important;
+        }
+        .cal-date.recycling-day::before { 
+            content: '♻'; 
+            position: absolute; 
+            top: 1px; 
+            left: 3px; 
+            font-size: 0.55rem; 
+            color: #155724; 
+        }
+        .cal-date.recycling-day:hover::after {
+            content: 'Recycling Goes Out';
+            position: absolute;
+            bottom: 110%;
+            left: 50%;
+            transform: translateX(-50%);
+            background-color: #155724;
+            color: #ffffff;
+            padding: 4px 7px;
+            font-size: 0.62rem;
+            font-weight: 700;
+            border-radius: 4px;
+            white-space: nowrap;
+            z-index: 100;
+            pointer-events: none;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+        }
+
+        .cal-badge { 
+            position: absolute; 
+            top: 2px; 
+            right: 3px; 
+            background: var(--brand-blue); 
+            color: white; 
+            font-size: 0.55rem; 
+            font-weight: 800; 
+            padding: 1px 4px; 
+            border-radius: 6px; 
+            line-height: 1;
+        }
+        .cal-date.selected .cal-badge { background: #363636; }
+
+        .chart-container { 
+            position: relative; 
+            flex: 1; 
+            width: 100%; 
+            display: flex; 
+            align-items: center; 
+            justify-content: center; 
+            min-height: 0; 
+            padding: 10px 0;
+        }
+
+        /* --- INPUT & LIST STYLES --- */
+        .item-input-group {
+            display: flex;
+            gap: 6px;
+            margin-bottom: 8px;
+            flex-shrink: 0;
+        }
+        .item-input {
+            flex: 1;
+            padding: 6px 10px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            font-family: inherit;
+            font-size: 0.75rem;
+            outline: none;
+        }
+        .item-input:focus { border-color: var(--brand-blue); }
+        .item-add-btn {
+            background: var(--brand-yellow);
+            color: #1a1a00;
+            border: 1px solid #d1b100;
+            border-radius: 4px;
+            padding: 6px 12px;
+            font-size: 0.72rem;
+            font-weight: 800;
+            cursor: pointer;
+            transition: background 0.15s;
+        }
+        .item-add-btn:hover { background: #ebd000; }
+
+        .custom-item-list {
+            flex: 1;
+            overflow-y: auto;
+            border: 1px solid #eee;
+            border-radius: 6px;
+            padding: 4px;
+            background: #fafafa;
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            min-height: 0;
+        }
+        .custom-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background: #ffffff;
+            border: 1px solid #e2e2e2;
+            padding: 6px 8px;
+            border-radius: 4px;
+            font-size: 0.75rem;
+            transition: all 0.15s ease;
+        }
+        .custom-item:hover { border-color: #bbb; }
+        .custom-item.completed {
+            background: #f4f4f4;
+            opacity: 0.65;
+        }
+        .custom-item.completed .item-text {
+            text-decoration: line-through;
+            color: var(--text-subtle);
+        }
+        .item-left {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            overflow: hidden;
+        }
+        .item-checkbox {
+            width: 15px;
+            height: 15px;
+            cursor: pointer;
+            accent-color: var(--brand-blue);
+        }
+        .item-text {
+            font-weight: 600;
+            word-break: break-word;
+        }
+        .item-del-btn {
+            background: transparent;
+            border: none;
+            color: #999;
+            font-size: 0.85rem;
+            font-weight: 800;
+            cursor: pointer;
+            padding: 0 4px;
+            line-height: 1;
+            border-radius: 3px;
+        }
+        .item-del-btn:hover { color: var(--brand-red); background: #fdf0ef; }
+
+        /* Inventory Tag Pill Design */
+        .inv-badge {
+            display: inline-block;
+            background: #eef4ff;
+            color: var(--brand-blue);
+            border: 1px solid #cce0ff;
+            font-weight: 700;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 0.7rem;
+        }
+
+        footer {
+            height: var(--footer-height);
+            display: flex;
+            align-items: center;
+            justify-content: flex-end;
+            padding: 0 20px;
+            background: transparent;
+            flex-shrink: 0;
+        }
+        .btn-dev-purge { 
+            background: transparent; 
+            color: var(--text-subtle); 
+            border: none; 
+            font-size: 0.62rem; 
+            font-weight: 700; 
+            padding: 2px 6px; 
+            cursor: pointer; 
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            opacity: 0.5;
+            transition: all 0.15s;
+        }
+        .btn-dev-purge:hover { opacity: 1; color: var(--brand-red); text-decoration: underline; }
+
+        .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); display: none; align-items: center; justify-content: center; z-index: 2000; }
+        .modal { background: white; padding: 20px; border-radius: 10px; width: 340px; max-width: 90%; box-shadow: 0 10px 30px rgba(0,0,0,0.2); }
+        .modal-title { font-weight: 800; font-size: 0.9rem; margin-bottom: 10px; text-transform: uppercase; border-bottom: 2px solid var(--brand-yellow); padding-bottom: 4px; }
+        .type-options { display: grid; grid-template-columns: 1fr; gap: 6px; margin-top: 8px; }
+        .type-btn { padding: 8px; border: 1px solid #ddd; background: #f8f8f8; border-radius: 6px; font-family: inherit; font-weight: 700; text-align: left; cursor: pointer; transition: all 0.15s; }
+        .type-btn:hover { background: var(--brand-yellow); border-color: var(--brand-yellow); }
+        .action-btn-small { background: #eee; border: none; padding: 6px 12px; font-weight: 700; font-size: 0.75rem; cursor: pointer; border-radius: 4px; width: 100%; margin-top: 8px; }
+
+        ::-webkit-scrollbar { width: 4px; }
+        ::-webkit-scrollbar-track { background: #f1f1f1; }
+        ::-webkit-scrollbar-thumb { background: #ccc; border-radius: 4px; }
+    </style>
+</head>
+<body>
+
+    <header>
+        <div class="header-title">Facility Inquiries Dashboard</div>
+        <img src="aa-self-storage-logo-3c.webp" alt="AA Self Storage" class="header-logo" onerror="this.style.display='none'">
+    </header>
+
+    <main class="content-wrapper">
+        <div class="dashboard-grid">
+            
+            <!-- COLUMN 1: INQUIRIES & CALENDAR -->
+            <div class="dashboard-col">
+                <div class="widget">
+                    <div class="widget-header">
+                        <span>Inquiry Tracker</span>
+                        <div style="display:flex; gap:6px;">
+                            <button class="btn-header-action btn-undo" onclick="undoLastInquiry()">↩ Undo Last</button>
+                            <button class="btn-header-action btn-reset" onclick="confirmResetTracker()">Reset Today</button>
+                        </div>
+                    </div>
+                    
+                    <div class="section-label">Log New Inquiry</div>
+                    
+                    <div class="channel-cards">
+                        <div class="channel-card" style="border-top-color: var(--brand-blue);" onclick="openTypeModal('Phone')">
+                            <div class="channel-card-icon" style="background: var(--brand-blue);">
+                                <svg viewBox="0 0 24 24"><path d="M6.62,10.79C8.06,13.62 10.38,15.94 13.21,17.38L15.41,15.18C15.69,14.9 16.08,14.82 16.43,14.93C17.55,15.3 18.75,15.5 20,15.5A1,1 0 0,1 21,16.5V20A1,1 0 0,1 20,21A17,17 0 0,1 3,4A1,1 0 0,1 4,3H7.5A1,1 0 0,1 8.5,4C8.5,5.25 8.7,6.45 9.07,7.57C9.18,7.92 9.1,8.31 8.82,8.59L6.62,10.79Z"/></svg>
+                            </div>
+                            <div class="channel-card-label">Phone</div>
+                            <span class="channel-card-count" id="count-Phone">0</span>
+                        </div>
+
+                        <div class="channel-card" style="border-top-color: #2ecc71;" onclick="openTypeModal('Walk-In')">
+                            <div class="channel-card-icon" style="background: #2ecc71;">
+                                <svg viewBox="0 0 24 24"><path d="M14.12,10H19V12H15.88L13.13,19H11L13.13,12H9V10L11,3H13L14.12,10M12,1C10.89,1 10,1.89 10,3C10,4.11 10.89,5 12,5C13.11,5 14,4.11 14,3C14,1.89 13.11,1 12,1Z"/></svg>
+                            </div>
+                            <div class="channel-card-label">Walk-In</div>
+                            <span class="channel-card-count" id="count-Walk-In">0</span>
+                        </div>
+
+                        <div class="channel-card" style="border-top-color: #9b59b6;" onclick="openTypeModal('Email')">
+                            <div class="channel-card-icon" style="background: #9b59b6;">
+                                <svg viewBox="0 0 24 24"><path d="M20,4H4C2.89,4 2,4.89 2,6V18A2,2 0 0,0 4,20H20A2,2 0 0,0 22,18V6C22,4.89 21.1,4 20,4M20,18H4V8L12,13L20,8V18M12,11L4,6H20L12,11Z"/></svg>
+                            </div>
+                            <div class="channel-card-label">Email</div>
+                            <span class="channel-card-count" id="count-Email">0</span>
+                        </div>
+                    </div>
+
+                    <div class="scoreboard">
+                        <div class="scoreboard-label" id="scoreboard-date-label">Total Inquiries (Today)</div>
+                        <div class="scoreboard-value" id="total-today">0</div>
+                    </div>
+
+                    <div class="audit-label" id="feed-title-label">Live Activity Feed</div>
+                    <div id="inquiry-feed"></div>
+                </div>
+
+                <!-- Calendar Widget -->
+                <div class="widget calendar-widget">
+                    <div style="display:flex; justify-content:space-between; align-items:center;">
+                        <div>
+                            <div id="clock-display">00:00:00</div>
+                            <div id="date-display" style="font-weight:700; color:var(--brand-gray); font-size:0.7rem;">Loading...</div>
+                        </div>
+                        <div style="display:flex; gap:6px; align-items:center;">
+                            <button id="btn-show-today" class="btn-header-action btn-undo" onclick="selectToday()" style="display:none; background:var(--brand-yellow); border-color:#d1b100;">Show Today</button>
+                            <div style="font-size:0.62rem; font-weight:700; color:#155724; background:#d4edda; padding:2px 5px; border-radius:4px;">
+                                ♻️ Alternate Fridays
+                            </div>
+                        </div>
+                    </div>
+                    <div class="calendar-grid" id="calendar-grid"></div>
+                </div>
+            </div>
+
+            <!-- COLUMN 2: CHART & TASKS -->
+            <div class="dashboard-col">
+                <!-- Inquiry Breakdown Chart -->
+                <div class="widget">
+                    <div class="widget-header">
+                        <span id="chart-header-label">Daily Inquiry Breakdown</span>
+                    </div>
+                    <div class="chart-container">
+                        <canvas id="inquiryChart"></canvas>
+                    </div>
+                </div>
+
+                <!-- Shift To-Do List Widget -->
+                <div class="widget">
+                    <div class="widget-header">
+                        <span>Shift Checklist & Tasks</span>
+                        <button class="btn-header-action btn-undo" onclick="clearCompletedTasks()" style="font-size:0.62rem; padding:2px 6px;">Clear Completed</button>
+                    </div>
+                    
+                    <form class="item-input-group" onsubmit="addTask(event)">
+                        <input type="text" id="todo-input-field" class="item-input" placeholder="Add task (e.g., Call back Unit 104 lead)..." required />
+                        <button type="submit" class="item-add-btn">+ Add</button>
+                    </form>
+
+                    <div class="custom-item-list" id="todo-list"></div>
+                </div>
+            </div>
+
+            <!-- COLUMN 3: AVAILABLE UNITS & SPACES -->
+            <div class="dashboard-col">
+                <!-- Top Half: Available Units -->
+                <div class="widget">
+                    <div class="widget-header">
+                        <div class="header-title-with-icon">
+                            <!-- Building/Unit SVG Icon -->
+                            <svg viewBox="0 0 24 24"><path d="M19,3H5C3.89,3 3,3.89 3,5V19A2,2 0 0,0 5,21H19A2,2 0 0,0 21,19V5C21,3.89 20.1,3 19,3M19,19H5V5H19V19M17,11H15V7H17V11M13,11H11V7H13V11M9,11H7V7H9V11M17,17H15V13H17V17M13,17H11V13H13V17M9,17H7V13H9V17Z"/></svg>
+                            <span>Available Units</span>
+                        </div>
+                    </div>
+                    
+                    <form class="item-input-group" onsubmit="addInventoryItem(event, 'Unit')">
+                        <input type="text" id="unit-input-field" class="item-input" placeholder="e.g. 10x10 Climate (#204)" required />
+                        <button type="submit" class="item-add-btn">+ Add</button>
+                    </form>
+
+                    <div class="custom-item-list" id="units-list"></div>
+                </div>
+
+                <!-- Bottom Half: Available Spaces -->
+                <div class="widget">
+                    <div class="widget-header">
+                        <div class="header-title-with-icon">
+                            <!-- Vehicle/Parking SVG Icon -->
+                            <svg viewBox="0 0 24 24"><path d="M18.92,6.01C18.72,5.42 18.16,5 17.5,5H6.5C5.84,5 5.28,5.42 5.08,6.01L3,12V20A1,1 0 0,0 4,21H5A1,1 0 0,0 6,20V19H18V20A1,1 0 0,0 21,20V12L18.92,6.01M6.85,7H17.14L18.22,10.08H5.78L6.85,7M19,17H5V12H19V17M7.5,13A1.5,1.5 0 0,0 6,14.5A1.5,1.5 0 0,0 7.5,16A1.5,1.5 0 0,0 9,14.5A1.5,1.5 0 0,0 7.5,13M16.5,13A1.5,1.5 0 0,0 15,14.5A1.5,1.5 0 0,0 16.5,16A1.5,1.5 0 0,0 18,14.5A1.5,1.5 0 0,0 16.5,13Z"/></svg>
+                            <span>Available Spaces</span>
+                        </div>
+                    </div>
+                    
+                    <form class="item-input-group" onsubmit="addInventoryItem(event, 'Space')">
+                        <input type="text" id="space-input-field" class="item-input" placeholder="e.g. 10x20 Covered Parking (#P-05)" required />
+                        <button type="submit" class="item-add-btn">+ Add</button>
+                    </form>
+
+                    <div class="custom-item-list" id="spaces-list"></div>
+                </div>
+            </div>
+
+        </div>
+    </main>
+
+    <footer>
+        <button class="btn-dev-purge" onclick="confirmDevPurge()" title="Developer tool to purge all Firebase records">⚙ Dev: Clear All Data</button>
+    </footer>
+
+    <!-- MODAL -->
+    <div class="modal-overlay" id="type-modal">
+        <div class="modal">
+            <div class="modal-title">Select Unit / Inquiry Type</div>
+            <div style="font-size: 0.75rem; color: var(--text-muted);">Channel: <strong id="selected-channel-label" style="color:var(--text-dark);"></strong></div>
+            <div class="type-options">
+                <button class="type-btn" onclick="submitInquiry('Climate-Controlled')">Climate-Controlled</button>
+                <button class="type-btn" onclick="submitInquiry('Outside Parking')">Outside Parking</button>
+                <button class="type-btn" onclick="submitInquiry('Exterior Unit')">Exterior Unit</button>
+                <button class="type-btn" onclick="submitInquiry('Covered Parking')">Covered Parking</button>
+            </div>
+            <button class="action-btn-small" onclick="closeModal()">Cancel</button>
+        </div>
+    </div>
+
+    <!-- FIREBASE JS -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+        import { getFirestore, collection, addDoc, deleteDoc, doc, onSnapshot, query, orderBy, writeBatch, getDocs, updateDoc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+        const firebaseConfig = {
+            apiKey:            "AIzaSyC1w7shhAwtLS0PJSJ67fhNfA67JetO3s4",
+            authDomain:        "leland-dashboard.firebaseapp.com",
+            projectId:         "leland-dashboard",
+            storageBucket:     "leland-dashboard.firebasestorage.app",
+            messagingSenderId: "520920211884",
+            appId:             "1:520920211884:web:db378402829a898a0c9a09"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db  = getFirestore(app);
+
+        let activeChannel = null;
+        let allInquiries  = [];
+        let selectedDate  = new Date();
+        let chartInstance = null;
+        let allTasks     = [];
+        let allInventory = [];
+
+        window.addEventListener('DOMContentLoaded', () => {
+            selectedDate.setHours(0,0,0,0);
+            initChart();
+            updateClock();
+            setInterval(updateClock, 1000);
+            listenToInquiries();
+            listenToTasks();
+            listenToInventory();
+        });
+
+        // INVENTORY (UNITS & SPACES) FIREBASE FUNCTIONS
+        function listenToInventory() {
+            const q = query(collection(db, 'inventory'), orderBy('createdAt', 'asc'));
+            onSnapshot(q, (snapshot) => {
+                allInventory = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                renderInventory();
+            });
+        }
+
+        window.addInventoryItem = async (e, type) => {
+            e.preventDefault();
+            const inputId = type === 'Unit' ? 'unit-input-field' : 'space-input-field';
+            const input = document.getElementById(inputId);
+            const text = input.value.trim();
+            if (!text) return;
+
+            try {
+                await addDoc(collection(db, 'inventory'), {
+                    type: type,
+                    text: text,
+                    createdAt: Date.now()
+                });
+                input.value = '';
+            } catch (err) {
+                console.error("Error adding inventory item:", err);
+            }
+        };
+
+        window.deleteInventoryItem = async (id) => {
+            try {
+                await deleteDoc(doc(db, 'inventory', id));
+            } catch (err) {
+                console.error("Error deleting inventory item:", err);
+            }
+        };
+
+        function renderInventory() {
+            const unitsContainer = document.getElementById('units-list');
+            const spacesContainer = document.getElementById('spaces-list');
+
+            const units = allInventory.filter(i => i.type === 'Unit');
+            const spaces = allInventory.filter(i => i.type === 'Space');
+
+            // Render Units
+            if (units.length === 0) {
+                unitsContainer.innerHTML = `<div style="font-size:0.72rem; color:#999; text-align:center; padding:12px;">No available units logged.</div>`;
+            } else {
+                unitsContainer.innerHTML = units.map(item => `
+                    <div class="custom-item">
+                        <div class="item-left">
+                            <span class="inv-badge">UNIT</span>
+                            <span class="item-text">${escapeHtml(item.text)}</span>
+                        </div>
+                        <button class="item-del-btn" onclick="deleteInventoryItem('${item.id}')" title="Remove Item">✕</button>
+                    </div>
+                `).join('');
+            }
+
+            // Render Spaces
+            if (spaces.length === 0) {
+                spacesContainer.innerHTML = `<div style="font-size:0.72rem; color:#999; text-align:center; padding:12px;">No available spaces logged.</div>`;
+            } else {
+                spacesContainer.innerHTML = spaces.map(item => `
+                    <div class="custom-item">
+                        <div class="item-left">
+                            <span class="inv-badge" style="background:#fef9e7; color:#8a6d3b; border-color:#fbeed5;">SPACE</span>
+                            <span class="item-text">${escapeHtml(item.text)}</span>
+                        </div>
+                        <button class="item-del-btn" onclick="deleteInventoryItem('${item.id}')" title="Remove Item">✕</button>
+                    </div>
+                `).join('');
+            }
+        }
+
+        // TO-DO LIST FIREBASE FUNCTIONS
+        function listenToTasks() {
+            const q = query(collection(db, 'tasks'), orderBy('createdAt', 'asc'));
+            onSnapshot(q, (snapshot) => {
+                allTasks = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                renderTasks();
+            });
+        }
+
+        window.addTask = async (e) => {
+            e.preventDefault();
+            const input = document.getElementById('todo-input-field');
+            const text = input.value.trim();
+            if (!text) return;
+
+            try {
+                await addDoc(collection(db, 'tasks'), {
+                    text: text,
+                    completed: false,
+                    createdAt: Date.now()
+                });
+                input.value = '';
+            } catch (err) {
+                console.error("Error adding task:", err);
+            }
+        };
+
+        window.toggleTask = async (id, currentStatus) => {
+            try {
+                await updateDoc(doc(db, 'tasks', id), {
+                    completed: !currentStatus
+                });
+            } catch (err) {
+                console.error("Error toggling task:", err);
+            }
+        };
+
+        window.deleteTask = async (id) => {
+            try {
+                await deleteDoc(doc(db, 'tasks', id));
+            } catch (err) {
+                console.error("Error deleting task:", err);
+            }
+        };
+
+        window.clearCompletedTasks = async () => {
+            const completed = allTasks.filter(t => t.completed);
+            if (completed.length === 0) return;
+            try {
+                const batch = writeBatch(db);
+                completed.forEach(t => batch.delete(doc(db, 'tasks', t.id)));
+                await batch.commit();
+            } catch (err) {
+                console.error("Error clearing completed tasks:", err);
+            }
+        };
+
+        function renderTasks() {
+            const container = document.getElementById('todo-list');
+            if (allTasks.length === 0) {
+                container.innerHTML = `<div style="font-size:0.72rem; color:#999; text-align:center; padding:12px;">No shift tasks added yet.</div>`;
+                return;
+            }
+
+            container.innerHTML = allTasks.map(task => `
+                <div class="custom-item ${task.completed ? 'completed' : ''}">
+                    <div class="item-left">
+                        <input type="checkbox" class="item-checkbox" ${task.completed ? 'checked' : ''} onchange="toggleTask('${task.id}', ${task.completed})">
+                        <span class="item-text">${escapeHtml(task.text)}</span>
+                    </div>
+                    <button class="item-del-btn" onclick="deleteTask('${task.id}')" title="Delete Task">✕</button>
+                </div>
+            `).join('');
+        }
+
+        function escapeHtml(text) {
+            return text.replace(/[&<>"']/g, function(m) {
+                return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' }[m];
+            });
+        }
+
+        // INQUIRY ACTIONS
+        window.openTypeModal = (channel) => {
+            activeChannel = channel;
+            document.getElementById('selected-channel-label').textContent = channel;
+            document.getElementById('type-modal').style.display = 'flex';
+        };
+
+        window.closeModal = () => {
+            document.getElementById('type-modal').style.display = 'none';
+            activeChannel = null;
+        };
+
+        window.submitInquiry = async (unitType) => {
+            if (!activeChannel) return;
+            try {
+                await addDoc(collection(db, 'inquiries'), {
+                    channel: activeChannel,
+                    unitType: unitType,
+                    timestamp: Date.now(),
+                    dateStr: new Date().toISOString()
+                });
+                closeModal();
+            } catch (e) {
+                console.error("Error logging inquiry: ", e);
+            }
+        };
+
+        window.undoLastInquiry = async () => {
+            if (allInquiries.length === 0) return;
+            const lastInquiry = allInquiries[0]; 
+            try {
+                await deleteDoc(doc(db, 'inquiries', lastInquiry.id));
+            } catch (e) {
+                console.error("Error undoing inquiry: ", e);
+            }
+        };
+
+        window.confirmResetTracker = async () => {
+            const todayStart = new Date().setHours(0,0,0,0);
+            const todayInquiries = allInquiries.filter(i => i.timestamp >= todayStart);
+            if (todayInquiries.length === 0) return;
+
+            if (confirm("Reset today's inquiry counts?")) {
+                try {
+                    const batch = writeBatch(db);
+                    todayInquiries.forEach(i => batch.delete(doc(db, 'inquiries', i.id)));
+                    await batch.commit();
+                } catch (e) {
+                    console.error("Error resetting tracker: ", e);
+                }
+            }
+        };
+
+        window.confirmDevPurge = async () => {
+            if (confirm("⚠️ DEVELOPER ACTION: Delete ALL recorded inquiries across all dates?")) {
+                try {
+                    const snapshot = await getDocs(collection(db, 'inquiries'));
+                    const batch = writeBatch(db);
+                    snapshot.docs.forEach(d => batch.delete(doc(db, 'inquiries', d.id)));
+                    await batch.commit();
+                } catch (e) {
+                    console.error("Error purging all records: ", e);
+                }
+            }
+        };
+
+        function listenToInquiries() {
+            const q = query(collection(db, 'inquiries'), orderBy('timestamp', 'desc'));
+            onSnapshot(q, (snapshot) => {
+                allInquiries = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                updateCountsAndFeed();
+                updateChart();
+                renderCalendar();
+            });
+        }
+
+        function updateCountsAndFeed() {
+            const todayStart = new Date().setHours(0,0,0,0);
+            const todayInquiries = allInquiries.filter(i => i.timestamp >= todayStart);
+
+            let counts = { Phone: 0, 'Walk-In': 0, Email: 0 };
+            todayInquiries.forEach(i => {
+                if (counts[i.channel] !== undefined) counts[i.channel]++;
+            });
+
+            document.getElementById('count-Phone').textContent = counts['Phone'];
+            document.getElementById('count-Walk-In').textContent = counts['Walk-In'];
+            document.getElementById('count-Email').textContent = counts['Email'];
+
+            const selectedStart = new Date(selectedDate).setHours(0,0,0,0);
+            const selectedEnd = new Date(selectedDate).setHours(23,59,59,999);
+            const filteredInquiries = allInquiries.filter(i => i.timestamp >= selectedStart && i.timestamp <= selectedEnd);
+
+            const isToday = selectedStart === todayStart;
+            const dateStrFormatted = selectedDate.toLocaleDateString([], { month: 'short', day: 'numeric' });
+
+            document.getElementById('scoreboard-date-label').textContent = isToday ? 'Total Inquiries (Today)' : `Total Inquiries (${dateStrFormatted})`;
+            document.getElementById('total-today').textContent = filteredInquiries.length;
+            document.getElementById('feed-title-label').textContent = isToday ? 'Live Activity Feed' : `Activity Feed (${dateStrFormatted})`;
+            document.getElementById('chart-header-label').textContent = isToday ? 'Daily Inquiry Breakdown' : `Inquiry Breakdown (${dateStrFormatted})`;
+
+            document.getElementById('btn-show-today').style.display = isToday ? 'none' : 'block';
+
+            const feedEl = document.getElementById('inquiry-feed');
+            if (filteredInquiries.length === 0) {
+                feedEl.innerHTML = `<div style="font-size:0.72rem; color:#999; text-align:center; padding:8px;">No inquiries recorded.</div>`;
+                return;
+            }
+
+            feedEl.innerHTML = filteredInquiries.map(i => {
+                const time = new Date(i.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                return `
+                    <div class="feed-item">
+                        <div>
+                            <div class="feed-tag">${i.channel} &bull; ${i.unitType}</div>
+                            <div class="feed-sub">${new Date(i.timestamp).toLocaleDateString()}</div>
+                        </div>
+                        <div style="font-weight:700; color:var(--brand-gray);">${time}</div>
+                    </div>`;
+            }).join('');
+        }
+
+        const centerTextPlugin = {
+            id: 'centerText',
+            beforeDraw(chart) {
+                const { width, height, ctx } = chart;
+                ctx.restore();
+                
+                const total = chart.data.datasets[0].data.reduce((a, b) => a + b, 0);
+                
+                ctx.font = '800 2.2rem Barlow, sans-serif';
+                ctx.textBaseline = 'middle';
+                ctx.fillStyle = '#363636';
+                
+                const text = String(total);
+                const textX = Math.round((width - ctx.measureText(text).width) / 2);
+                const textY = height / 2 - 8;
+                ctx.fillText(text, textX, textY);
+
+                ctx.font = '800 0.7rem Barlow, sans-serif';
+                ctx.fillStyle = '#888888';
+                const label = 'TOTAL';
+                const labelX = Math.round((width - ctx.measureText(label).width) / 2);
+                const labelY = height / 2 + 18;
+                ctx.fillText(label, labelX, labelY);
+
+                ctx.save();
+            }
+        };
+
+        function initChart() {
+            const ctx = document.getElementById('inquiryChart').getContext('2d');
+            chartInstance = new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: ['Climate-Controlled', 'Outside Parking', 'Exterior Unit', 'Covered Parking'],
+                    datasets: [{
+                        data: [0, 0, 0, 0],
+                        backgroundColor: ['#026af2', '#ffd701', '#2ecc71', '#9b59b6'],
+                        borderWidth: 2,
+                        borderColor: '#ffffff'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    cutout: '68%',
+                    plugins: {
+                        legend: {
+                            position: 'bottom',
+                            labels: { font: { family: 'Barlow', weight: '700', size: 11 }, padding: 12 }
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    const value = context.raw || 0;
+                                    const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                                    const percentage = total > 0 ? Math.round((value / total) * 100) : 0;
+                                    return ` ${context.label}: ${value} (${percentage}%)`;
+                                }
+                            }
+                        }
+                    }
+                },
+                plugins: [centerTextPlugin]
+            });
+        }
+
+        function updateChart() {
+            if (!chartInstance) return;
+
+            const unitTypes = ['Climate-Controlled', 'Outside Parking', 'Exterior Unit', 'Covered Parking'];
+            const startTime = new Date(selectedDate).setHours(0,0,0,0);
+            const endTime = new Date(selectedDate).setHours(23,59,59,999);
+
+            const filteredInquiries = allInquiries.filter(i => i.timestamp >= startTime && i.timestamp <= endTime);
+            const counts = unitTypes.map(ut => filteredInquiries.filter(inq => inq.unitType === ut).length);
+
+            chartInstance.data.datasets[0].data = counts;
+            chartInstance.update();
+        }
+
+        window.selectToday = () => {
+            const today = new Date();
+            today.setHours(0,0,0,0);
+            selectedDate = today;
+            updateCountsAndFeed();
+            updateChart();
+            renderCalendar();
+        };
+
+        function renderCalendar() {
+            const now = new Date();
+            const year = now.getFullYear(), month = now.getMonth();
+            const daysInMonth = new Date(year, month + 1, 0).getDate();
+            const firstDay = new Date(year, month, 1).getDay();
+            const grid = document.getElementById('calendar-grid');
+            
+            grid.innerHTML = '';
+            ['Su','Mo','Tu','We','Th','Fr','Sa'].forEach(d => {
+                const el = document.createElement('div'); el.className = 'cal-dow'; el.textContent = d; grid.appendChild(el);
+            });
+            for (let i = 0; i < firstDay; i++) {
+                const b = document.createElement('div'); b.className = 'cal-date empty'; grid.appendChild(b);
+            }
+            
+            let fridayCounter = 0;
+            for (let d = 1; d <= daysInMonth; d++) {
+                const dateObj = new Date(year, month, d);
+                dateObj.setHours(0,0,0,0);
+
+                const isToday = d === now.getDate() && month === now.getMonth() && year === now.getFullYear();
+                const isSelected = dateObj.getTime() === selectedDate.getTime();
+
+                let isRecycling = false;
+                if (dateObj.getDay() === 5) {
+                    fridayCounter++;
+                    if (fridayCounter % 2 === 1) isRecycling = true;
+                }
+
+                const dayStart = dateObj.getTime();
+                const dayEnd = new Date(year, month, d, 23, 59, 59, 999).getTime();
+                const dayInquiryCount = allInquiries.filter(i => i.timestamp >= dayStart && i.timestamp <= dayEnd).length;
+
+                const el = document.createElement('div');
+                el.className = 'cal-date' + (isToday ? ' today' : '') + (isSelected ? ' selected' : '') + (isRecycling ? ' recycling-day' : '');
+                el.textContent = d;
+
+                if (dayInquiryCount > 0) {
+                    const badge = document.createElement('span');
+                    badge.className = 'cal-badge';
+                    badge.textContent = dayInquiryCount;
+                    el.appendChild(badge);
+                }
+
+                el.onclick = () => {
+                    selectedDate = dateObj;
+                    updateCountsAndFeed();
+                    updateChart();
+                    renderCalendar();
+                };
+
+                grid.appendChild(el);
+            }
+        }
+
+        let currentDateStr = new Date().toDateString();
+
+        function updateClock() {
+            const now = new Date();
+            document.getElementById('clock-display').textContent = now.toLocaleTimeString([], { hour12: true, hour: '2-digit', minute: '2-digit', second: '2-digit' });
+            document.getElementById('date-display').textContent  = now.toLocaleDateString([],  { weekday: 'long', month: 'short', day: 'numeric' });
+        
+            // Check if midnight has passed
+            const todayStr = now.toDateString();
+            if (todayStr !== currentDateStr) {
+                currentDateStr = todayStr;
+                
+                // Auto-advance selected date to the new day
+                selectedDate = new Date();
+                selectedDate.setHours(0,0,0,0);
+                
+                // Refresh UI views seamlessly
+                updateCountsAndFeed();
+                updateChart();
+                renderCalendar();
+            }
+        }
+    </script>
+</body>
+</html>

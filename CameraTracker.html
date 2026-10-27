@@ -1,0 +1,1320 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Security Camera Map | AA Self Storage</title>
+    <!-- Barlow Font matching dashboard styling -->
+    <link href="https://fonts.googleapis.com/css2?family=Barlow:wght@500;700;800&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-off-white: #F4F1E8; 
+            --brand-gray: #555555;
+            --brand-yellow: #ffd701; 
+            --brand-red: #e74c3c;    
+            --brand-blue: #026af2;
+            --brand-green: #2ecc71;
+            --brand-purple: #9b59b6;
+            --text-dark: #363636;
+            --text-muted: #666666;
+            --text-subtle: #888888;
+            --white: #ffffff;
+            --header-height: 70px;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { 
+            font-family: 'Barlow', sans-serif; 
+            background-color: var(--bg-off-white); 
+            color: var(--text-dark); 
+            line-height: 1.5; 
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        header { 
+            height: var(--header-height); 
+            background: var(--white); 
+            display: flex; 
+            align-items: center; 
+            justify-content: space-between; 
+            padding: 0 28px; 
+            position: relative; 
+            z-index: 1000; 
+            border-bottom: 4px solid var(--brand-yellow); 
+            box-shadow: 0 4px 15px rgba(0,0,0,0.08); 
+            flex-shrink: 0;
+        }
+        .header-title { 
+            font-weight: 800; 
+            font-size: 1.1rem; 
+            text-transform: uppercase; 
+            letter-spacing: 1px; 
+            color: var(--brand-gray); 
+        }
+
+        .content-wrapper { 
+            flex: 1;
+            max-width: 1600px; 
+            width: 100%;
+            margin: 20px auto; 
+            padding: 0 20px 20px 20px; 
+            display: grid;
+            grid-template-columns: 1fr 380px;
+            gap: 20px;
+            height: calc(100vh - var(--header-height) - 40px);
+        }
+
+        @media (max-width: 1024px) {
+            .content-wrapper { grid-template-columns: 1fr; overflow-y: auto; }
+        }
+
+        .widget { 
+            background: var(--white); 
+            border-radius: 10px; 
+            padding: 20px; 
+            display: flex; 
+            flex-direction: column; 
+            box-shadow: 0 6px 18px rgba(0,0,0,0.05); 
+            border: 1px solid rgba(0,0,0,0.04); 
+            position: relative;
+            overflow: hidden;
+        }
+
+        .widget-header { 
+            font-weight: 800; 
+            text-transform: uppercase; 
+            font-size: 0.88rem; 
+            color: var(--brand-gray); 
+            margin-bottom: 10px; 
+            border-bottom: 3px solid var(--brand-yellow); 
+            padding-bottom: 8px; 
+            display: flex; 
+            justify-content: space-between; 
+            align-items: center; 
+            flex-shrink: 0; 
+        }
+
+        /* User Guidance Banner */
+        .info-hint-banner {
+            background: #eef5ff;
+            color: #1a56b0;
+            border: 1px solid #cce0ff;
+            padding: 6px 12px;
+            border-radius: 6px;
+            font-size: 0.75rem;
+            font-weight: 700;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            flex-shrink: 0;
+        }
+
+        .filter-toggle-group {
+            display: flex;
+            gap: 4px;
+            background: var(--bg-off-white);
+            padding: 3px;
+            border-radius: 6px;
+        }
+        .filter-btn {
+            border: none;
+            background: transparent;
+            padding: 4px 10px;
+            font-family: inherit;
+            font-size: 0.72rem;
+            font-weight: 800;
+            color: var(--brand-gray);
+            border-radius: 4px;
+            cursor: pointer;
+            transition: all 0.15s;
+        }
+        .filter-btn.active {
+            background: var(--white);
+            color: var(--text-dark);
+            box-shadow: 0 1px 4px rgba(0,0,0,0.1);
+        }
+
+        #map-container {
+            flex: 1;
+            position: relative;
+            cursor: grab;
+            overflow: hidden;
+            background: #eef1f5;
+            border-radius: 8px;
+            border: 1px solid #e0e0e0;
+        }
+        #map-container:active { cursor: grabbing; }
+
+        /* Expanded Viewport */
+        #viewport {
+            position: absolute;
+            transform-origin: 0 0;
+            top: 0;
+            left: 0;
+            width: 12000px;
+            height: 12000px;
+            background-size: 40px 40px;
+            background-image: 
+                linear-gradient(to right, rgba(0,0,0,0.05) 1px, transparent 1px),
+                linear-gradient(to bottom, rgba(0,0,0,0.05) 1px, transparent 1px);
+        }
+
+        /* Layer Ordering: Buildings underneath, SVG Overlay & Camera Nodes on top */
+        #buildings-layer {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 1;
+        }
+
+        #svg-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 2; /* Renders vision cones directly on top of buildings */
+        }
+
+        #camera-nodes-layer {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 3;
+        }
+
+        /* Facility Building Block Styling */
+        .building-block {
+            position: absolute;
+            background: #d8e2ec;
+            border: 2px solid #8ca2b8;
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 800;
+            font-size: 0.85rem;
+            color: #2c3e50;
+            cursor: pointer;
+            user-select: none;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+            text-align: center;
+            padding: 4px;
+        }
+        .building-block.selected {
+            border-color: var(--brand-blue);
+            background: #c3d7eb;
+            box-shadow: 0 0 0 2px var(--brand-blue);
+        }
+
+        .building-block.is-locked .lock-indicator {
+            position: absolute;
+            top: 4px;
+            right: 4px;
+            font-size: 0.7rem;
+            line-height: 1;
+            background: rgba(255,255,255,0.85);
+            border-radius: 3px;
+            padding: 1px 3px;
+        }
+
+        /* Camera Node Icons */
+        .camera-node {
+            position: absolute;
+            width: 32px;
+            height: 32px;
+            margin-left: -16px;
+            margin-top: -16px;
+            border-radius: 50%;
+            background: var(--white);
+            border: 3px solid var(--brand-blue);
+            box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.9), 0 3px 10px rgba(0,0,0,0.25);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: transform 0.15s ease, box-shadow 0.15s ease;
+        }
+
+        .camera-node::before {
+            content: '';
+            position: absolute;
+            top: -12px;
+            left: -12px;
+            right: -12px;
+            bottom: -12px;
+            border-radius: 50%;
+            background: transparent;
+        }
+
+        /* Camera Name Tooltip Label on Hover */
+        .camera-node::after {
+            content: attr(data-name);
+            position: absolute;
+            bottom: 38px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(30, 30, 30, 0.9);
+            color: var(--white);
+            padding: 3px 8px;
+            border-radius: 4px;
+            font-size: 0.7rem;
+            font-weight: 700;
+            white-space: nowrap;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.15s ease;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+        }
+
+        .camera-node:hover::after { opacity: 1; }
+        .camera-node:hover { transform: scale(1.2); z-index: 20; }
+        .camera-node.selected { border-color: var(--brand-yellow); transform: scale(1.25); z-index: 21; }
+        .camera-node svg { width: 16px; height: 16px; fill: currentColor; pointer-events: none; }
+
+        .camera-node[data-status="active"] { border-color: var(--brand-green); color: var(--brand-green); }
+        .camera-node[data-status="recording"] { border-color: var(--brand-blue); color: var(--brand-blue); }
+
+        .camera-node.is-locked .lock-indicator {
+            position: absolute;
+            top: -8px;
+            right: -8px;
+            font-size: 0.65rem;
+            background: var(--white);
+            border-radius: 50%;
+            padding: 1px 2px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+            pointer-events: none;
+        }
+
+        /* Maintenance & Offline Blink Effects */
+        @keyframes cameraBlink {
+            0% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.3; transform: scale(0.85); }
+            100% { opacity: 1; transform: scale(1); }
+        }
+
+        @keyframes coneBlink {
+            0%   { opacity: 0.60; }
+            50%  { opacity: 0.15; }
+            100% { opacity: 0.60; }
+        }
+
+        .camera-node[data-status="maintenance"] { 
+            border-color: var(--brand-yellow); 
+            color: #b79500; 
+            animation: cameraBlink 1.2s infinite ease-in-out;
+        }
+        .camera-node[data-status="offline"] { 
+            border-color: var(--brand-red); 
+            color: var(--brand-red); 
+            animation: cameraBlink 0.8s infinite ease-in-out;
+        }
+
+        .cone-blinking { animation: coneBlink 1s infinite ease-in-out; }
+
+        .camera-node[data-type="Keypad"] {
+            border-color: var(--brand-purple);
+            color: var(--brand-purple);
+        }
+
+        .map-actions {
+            position: absolute;
+            top: 15px;
+            left: 15px;
+            z-index: 20;
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .btn-action {
+            background: var(--white);
+            color: var(--text-dark);
+            border: 1px solid #ccc;
+            padding: 6px 12px;
+            border-radius: 6px;
+            font-family: inherit;
+            font-weight: 700;
+            font-size: 0.75rem;
+            cursor: pointer;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.06);
+            transition: all 0.15s;
+        }
+        .btn-action:hover { background: #f8f8f8; border-color: var(--brand-yellow); }
+
+        .zoom-controls {
+            position: absolute;
+            bottom: 15px;
+            right: 15px;
+            z-index: 20;
+            display: flex;
+            flex-direction: column;
+            border-radius: 6px;
+            overflow: hidden;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+        }
+        .zoom-btn {
+            background: var(--white);
+            color: var(--text-dark);
+            border: 1px solid #ddd;
+            width: 36px;
+            height: 36px;
+            font-size: 1rem;
+            font-weight: 800;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .zoom-btn:hover { background: #f0f0f0; }
+
+        .sidebar-content {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            overflow-y: auto;
+            flex: 1;
+        }
+
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+        .form-group label {
+            font-size: 0.72rem;
+            font-weight: 800;
+            color: var(--text-subtle);
+            text-transform: uppercase;
+        }
+        .form-group input, .form-group select, .form-group textarea {
+            background: var(--white);
+            border: 1px solid #ddd;
+            color: var(--text-dark);
+            padding: 8px;
+            border-radius: 6px;
+            font-family: inherit;
+            font-size: 0.85rem;
+            font-weight: 500;
+        }
+        .form-group textarea {
+            resize: vertical;
+            min-height: 70px;
+        }
+        .form-group input[type="range"] { padding: 0; }
+
+        .toggle-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background: var(--bg-off-white);
+            padding: 8px 12px;
+            border-radius: 6px;
+            border: 1px solid #e0e0e0;
+        }
+        .toggle-row label {
+            margin: 0;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            color: var(--text-dark);
+            font-weight: 800;
+        }
+        .toggle-row input[type="checkbox"] {
+            width: 18px;
+            height: 18px;
+            cursor: pointer;
+            accent-color: var(--brand-blue);
+        }
+
+        .image-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 8px;
+            margin-top: 4px;
+        }
+        .img-card {
+            position: relative;
+            aspect-ratio: 4/3;
+            border-radius: 6px;
+            overflow: hidden;
+            background: #eee;
+            border: 1px solid #ccc;
+            cursor: pointer;
+            transition: transform 0.15s ease;
+        }
+        .img-card:hover { transform: scale(1.03); }
+        .img-card img { width: 100%; height: 100%; object-fit: cover; }
+        .img-card .label {
+            position: absolute;
+            bottom: 0; left: 0; right: 0;
+            background: rgba(0,0,0,0.6);
+            color: var(--white);
+            font-size: 0.65rem;
+            font-weight: 700;
+            padding: 2px 4px;
+            text-align: center;
+        }
+
+        .val-badge { font-weight: 800; color: var(--brand-blue); float: right; }
+
+        .btn-danger {
+            background: #fdf0ef;
+            color: var(--brand-red);
+            border: 1px solid #f5c6c2;
+            padding: 8px;
+            border-radius: 6px;
+            font-family: inherit;
+            font-weight: 800;
+            font-size: 0.8rem;
+            cursor: pointer;
+            margin-top: auto;
+        }
+        .btn-danger:hover { background: #fad9d6; }
+
+        .status-sync-indicator {
+            font-size: 0.7rem;
+            font-weight: 800;
+            color: var(--brand-green);
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        /* Lightbox Modal */
+        .lightbox-modal {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; width: 100vw; height: 100vh;
+            background: rgba(0,0,0,0.85);
+            z-index: 5000;
+            align-items: center;
+            justify-content: center;
+            backdrop-filter: blur(4px);
+        }
+        .lightbox-modal.active { display: flex; }
+        .lightbox-content {
+            position: relative;
+            max-width: 90vw;
+            max-height: 85vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        .lightbox-content img {
+            max-width: 100%;
+            max-height: 80vh;
+            border-radius: 8px;
+            border: 3px solid var(--white);
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+        }
+        .lightbox-close {
+            position: absolute;
+            top: -40px;
+            right: 0;
+            color: var(--white);
+            font-size: 2rem;
+            font-weight: 800;
+            cursor: pointer;
+            line-height: 1;
+        }
+
+        /* Servicing Report Modal Styling */
+        .report-modal {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; width: 100vw; height: 100vh;
+            background: rgba(0,0,0,0.65);
+            z-index: 4000;
+            align-items: center;
+            justify-content: center;
+            backdrop-filter: blur(3px);
+        }
+        .report-modal.active { display: flex; }
+        .report-card {
+            background: var(--white);
+            width: 90%;
+            max-width: 950px;
+            max-height: 90vh;
+            border-radius: 12px;
+            box-shadow: 0 15px 40px rgba(0,0,0,0.3);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+        .report-header {
+            padding: 16px 24px;
+            background: #fff;
+            border-bottom: 3px solid var(--brand-yellow);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        .report-body {
+            padding: 24px;
+            overflow-y: auto;
+            flex: 1;
+            background: #fafafa;
+        }
+        .report-table {
+            width: 100%;
+            border-collapse: collapse;
+            background: var(--white);
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+        }
+        .report-table th, .report-table td {
+            padding: 12px 14px;
+            text-align: left;
+            border-bottom: 1px solid #eee;
+            font-size: 0.85rem;
+            vertical-align: top;
+        }
+        .report-table th {
+            background: #f1f3f5;
+            font-weight: 800;
+            text-transform: uppercase;
+            font-size: 0.72rem;
+            color: var(--brand-gray);
+        }
+        .report-badge {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-weight: 800;
+            font-size: 0.7rem;
+            text-transform: uppercase;
+        }
+        .badge-maintenance { background: #fef3c7; color: #b45309; }
+        .badge-offline { background: #fee2e2; color: #b91c1c; }
+
+        .report-thumb-grid {
+            display: flex;
+            gap: 6px;
+            flex-wrap: wrap;
+        }
+        .report-thumb {
+            width: 60px;
+            height: 45px;
+            object-fit: cover;
+            border-radius: 4px;
+            border: 1px solid #ccc;
+            cursor: pointer;
+        }
+
+        /* Print Isolation Styles */
+        @media print {
+            body * { visibility: hidden; }
+            .report-modal, .report-modal * { visibility: visible; }
+            .report-modal { position: absolute; left: 0; top: 0; width: 100%; height: auto; background: white; }
+            .report-card { box-shadow: none; width: 100%; max-width: 100%; }
+            .report-close-btn, .report-print-btn { display: none !important; }
+        }
+
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: #f1f1f1; }
+        ::-webkit-scrollbar-thumb { background: #ccc; border-radius: 4px; }
+    </style>
+</head>
+<body>
+
+    <header>
+        <div class="header-title">Security Camera Map & Maintenance</div>
+        <img src="aa-self-storage-logo-3c.webp" alt="AA Self Storage" style="height: 40px;" onerror="this.style.display='none'">
+    </header>
+
+    <main class="content-wrapper">
+        
+        <!-- MAIN MAP WIDGET -->
+        <div class="widget">
+            <div class="widget-header">
+                <div style="display:flex; align-items:center; gap: 10px;">
+                    <span>Facility Layout Overview</span>
+                    <span class="status-sync-indicator">● Live Cloud Sync</span>
+                </div>
+                <div class="filter-toggle-group">
+                    <button class="filter-btn active" onclick="setFilter('all')">All</button>
+                    <button class="filter-btn" onclick="setFilter('active')">Active Only</button>
+                    <button class="filter-btn" onclick="setFilter('service')">Needs Servicing</button>
+                </div>
+            </div>
+
+            <!-- Guidance Banner -->
+            <div class="info-hint-banner">
+                <span>💡 Click any camera node or building block to inspect details, lock position, or edit properties.</span>
+            </div>
+
+            <div id="map-container">
+                <div class="map-actions">
+                    <button class="btn-action" id="add-block-btn">🏢 Add Building Block</button>
+                    <button class="btn-action" id="add-cam-btn">📷 Add Camera</button>
+                    <button class="btn-action" id="toggle-lock-all-btn">🔒 Master Lock All</button>
+                    <button class="btn-action" id="open-report-btn" style="background:#fffbe6; border-color:#ffe58f;">🛠️ Servicing Work-Order Report</button>
+                    <button class="btn-action" id="export-map-btn">🖨️ Print Layout Map</button>
+                </div>
+
+                <div class="zoom-controls">
+                    <button class="zoom-btn" id="zoom-in">+</button>
+                    <button class="zoom-btn" id="zoom-out">−</button>
+                    <button class="zoom-btn" id="zoom-reset">⟲</button>
+                </div>
+
+                <div id="viewport">
+                    <!-- Layering: Buildings underneath, SVG overlay ON TOP for overlaid vision cones -->
+                    <div id="buildings-layer"></div>
+                    <svg id="svg-overlay"></svg>
+                    <div id="camera-nodes-layer"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- RIGHT INSPECTOR -->
+        <div class="widget">
+            <div class="widget-header">
+                <span id="sidebar-title">Inspector</span>
+            </div>
+
+            <div class="sidebar-content" id="sidebar-body">
+                <div style="font-size:0.8rem; color:var(--text-muted); text-align:center; margin-top:20px;">
+                    Select a camera or building block to drag, lock, resize, or edit details.<br><br>
+                    <small style="color:var(--text-subtle);">Shortcuts: <b>Del</b>/<b>Backspace</b> to delete, <b>Arrow Keys</b> to nudge position.</small>
+                </div>
+            </div>
+        </div>
+
+    </main>
+
+    <!-- Photo Lightbox Modal -->
+    <div class="lightbox-modal" id="photo-modal" onclick="closeLightbox(event)">
+        <div class="lightbox-content">
+            <span class="lightbox-close" onclick="closeLightbox(event)">&times;</span>
+            <img id="lightbox-img" src="" alt="Enlarged Camera View">
+        </div>
+    </div>
+
+    <!-- Servicing Work-Order Report Modal -->
+    <div class="report-modal" id="report-modal">
+        <div class="report-card">
+            <div class="report-header">
+                <div>
+                    <h3 style="font-weight: 800; text-transform: uppercase; color: var(--brand-gray);">IT Servicing Work Order Report</h3>
+                    <p style="font-size: 0.75rem; color: var(--text-subtle); margin-top: 2px;">AA Self Storage • Equipment & Servicing Access Details</p>
+                </div>
+                <div style="display:flex; gap:8px;">
+                    <button class="btn-action report-print-btn" onclick="window.print()">🖨️ Print Work Order</button>
+                    <button class="btn-action report-close-btn" onclick="closeReportModal()">✕ Close</button>
+                </div>
+            </div>
+            <div class="report-body" id="report-body-content">
+                <!-- Dynamically generated report table -->
+            </div>
+        </div>
+    </div>
+
+    <!-- FIRESTORE REALTIME INTEGRATION & LOGIC -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+        import { 
+            getFirestore, collection, doc, setDoc, deleteDoc, onSnapshot 
+        } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+        const firebaseConfig = {
+            apiKey:            "AIzaSyC1w7shhAwtLS0PJSJ67fhNfA67JetO3s4",
+            authDomain:        "leland-dashboard.firebaseapp.com",
+            projectId:         "leland-dashboard",
+            storageBucket:     "leland-dashboard.firebasestorage.app",
+            messagingSenderId: "520920211884",
+            appId:             "1:520920211884:web:db378402829a898a0c9a09"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+
+        // State Variables
+        let scale = 1;
+        let panX = 0;
+        let panY = 0;
+        let isDraggingMap = false;
+        let startX, startY;
+        let activeFilter = 'all';
+        let isAllLocked = false;
+
+        let cameras = [];
+        let buildings = [];
+        let selectedEntity = null; // { type: 'camera'|'building', id: string }
+        let draggingEntity = null;
+
+        const mapContainer = document.getElementById('map-container');
+        const viewport = document.getElementById('viewport');
+        const svgOverlay = document.getElementById('svg-overlay');
+        const camLayer = document.getElementById('camera-nodes-layer');
+        const buildingsLayer = document.getElementById('buildings-layer');
+
+        function updateTransform() {
+            viewport.style.transform = `translate(${panX}px, ${panY}px) scale(${scale})`;
+        }
+
+        mapContainer.addEventListener('wheel', (e) => {
+            e.preventDefault();
+            const zoomFactor = 1.1;
+            const mouseX = e.clientX;
+            const mouseY = e.clientY;
+
+            let newScale = e.deltaY < 0 ? scale * zoomFactor : scale / zoomFactor;
+            newScale = Math.min(Math.max(0.1, newScale), 4);
+
+            panX = mouseX - (mouseX - panX) * (newScale / scale);
+            panY = mouseY - (mouseY - panY) * (newScale / scale);
+            scale = newScale;
+
+            updateTransform();
+        });
+
+        mapContainer.addEventListener('mousedown', (e) => {
+            if (e.target.closest('.camera-node') || e.target.closest('.building-block') || e.target.closest('.map-actions') || e.target.closest('.zoom-controls')) return;
+            isDraggingMap = true;
+            startX = e.clientX - panX;
+            startY = e.clientY - panY;
+        });
+
+        window.addEventListener('mousemove', (e) => {
+            if (isDraggingMap) {
+                panX = e.clientX - startX;
+                panY = e.clientY - startY;
+                updateTransform();
+            } else if (draggingEntity) {
+                const rect = viewport.getBoundingClientRect();
+                const x = (e.clientX - rect.left) / scale;
+                const y = (e.clientY - rect.top) / scale;
+
+                if (draggingEntity.type === 'camera') {
+                    const cam = cameras.find(c => c.id === draggingEntity.id);
+                    if (cam && !cam.isLocked) { cam.x = x; cam.y = y; renderMap(); }
+                } else if (draggingEntity.type === 'building') {
+                    const bld = buildings.find(b => b.id === draggingEntity.id);
+                    if (bld && !bld.isLocked) { bld.x = x - bld.w/2; bld.y = y - bld.h/2; renderMap(); }
+                }
+            }
+        });
+
+        window.addEventListener('mouseup', () => {
+            if (draggingEntity) {
+                if (draggingEntity.type === 'camera') {
+                    const cam = cameras.find(c => c.id === draggingEntity.id);
+                    if (cam && !cam.isLocked) saveCameraToCloud(cam);
+                } else if (draggingEntity.type === 'building') {
+                    const bld = buildings.find(b => b.id === draggingEntity.id);
+                    if (bld && !bld.isLocked) saveBuildingToCloud(bld);
+                }
+            }
+            isDraggingMap = false;
+            draggingEntity = null;
+        });
+
+        // Keyboard Shortcuts
+        window.addEventListener('keydown', async (e) => {
+            if (['INPUT', 'TEXTAREA', 'SELECT'].includes(document.activeElement.tagName)) return;
+
+            if (selectedEntity) {
+                if (e.key === 'Delete' || e.key === 'Backspace') {
+                    e.preventDefault();
+                    if (selectedEntity.type === 'camera') {
+                        await deleteDoc(doc(db, "cameras", selectedEntity.id));
+                    } else if (selectedEntity.type === 'building') {
+                        await deleteDoc(doc(db, "buildings", selectedEntity.id));
+                    }
+                    resetInspector();
+                } else if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.key)) {
+                    e.preventDefault();
+                    const step = e.shiftKey ? 5 : 1;
+                    if (selectedEntity.type === 'camera') {
+                        const cam = cameras.find(c => c.id === selectedEntity.id);
+                        if (cam && !cam.isLocked) {
+                            if (e.key === 'ArrowUp') cam.y -= step;
+                            if (e.key === 'ArrowDown') cam.y += step;
+                            if (e.key === 'ArrowLeft') cam.x -= step;
+                            if (e.key === 'ArrowRight') cam.x += step;
+                            renderMap();
+                            saveCameraToCloud(cam);
+                        }
+                    } else if (selectedEntity.type === 'building') {
+                        const bld = buildings.find(b => b.id === selectedEntity.id);
+                        if (bld && !bld.isLocked) {
+                            if (e.key === 'ArrowUp') bld.y -= step;
+                            if (e.key === 'ArrowDown') bld.y += step;
+                            if (e.key === 'ArrowLeft') bld.x -= step;
+                            if (e.key === 'ArrowRight') bld.x += step;
+                            renderMap();
+                            saveBuildingToCloud(bld);
+                        }
+                    }
+                }
+            }
+        });
+
+        document.getElementById('zoom-in').onclick = () => { scale *= 1.2; updateTransform(); };
+        document.getElementById('zoom-out').onclick = () => { scale /= 1.2; updateTransform(); };
+        document.getElementById('zoom-reset').onclick = () => { scale = 1; panX = 0; panY = 0; updateTransform(); };
+
+        // Bulk Lock / Unlock All Toggle
+        document.getElementById('toggle-lock-all-btn').onclick = () => {
+            isAllLocked = !isAllLocked;
+            cameras.forEach(cam => {
+                cam.isLocked = isAllLocked;
+                saveCameraToCloud(cam);
+            });
+            buildings.forEach(bld => {
+                bld.isLocked = isAllLocked;
+                saveBuildingToCloud(bld);
+            });
+            document.getElementById('toggle-lock-all-btn').innerText = isAllLocked ? '🔓 Unlock All' : '🔒 Master Lock All';
+            renderMap();
+        };
+
+        // Export / Print Layout View
+        document.getElementById('export-map-btn').onclick = () => {
+            window.print();
+        };
+
+        // Servicing Report Modal Generator
+        document.getElementById('open-report-btn').onclick = () => {
+            generateServicingReport();
+        };
+
+        function generateServicingReport() {
+            const reportModal = document.getElementById('report-modal');
+            const reportContent = document.getElementById('report-body-content');
+            
+            const servicingCams = cameras.filter(c => c.status === 'maintenance' || c.status === 'offline');
+
+            if (servicingCams.length === 0) {
+                reportContent.innerHTML = `
+                    <div style="text-align:center; padding: 40px; color: var(--text-muted);">
+                        <p style="font-size: 1.1rem; font-weight: 800; color: var(--brand-green);">✔ All Cameras Operational</p>
+                        <p style="font-size: 0.85rem; margin-top: 6px;">There are currently no cameras flagged for maintenance or offline errors.</p>
+                    </div>`;
+            } else {
+                let rowsHtml = servicingCams.map(cam => {
+                    const badgeClass = cam.status === 'offline' ? 'badge-offline' : 'badge-maintenance';
+                    const statusLabel = cam.status === 'offline' ? 'Offline / Error' : 'Maintenance Required';
+                    const photosHtml = (cam.photos && cam.photos.length > 0) 
+                        ? `<div class="report-thumb-grid">${cam.photos.map(p => `<img src="${p}" class="report-thumb" onclick="openLightbox('${p}')">`).join('')}</div>` 
+                        : '<span style="color:#aaa; font-style:italic;">No photos</span>';
+
+                    return `
+                        <tr>
+                            <td>
+                                <strong>${cam.name}</strong><br>
+                                <span class="report-badge ${badgeClass}" style="margin-top:4px;">${statusLabel}</span>
+                            </td>
+                            <td>${cam.type || 'Fixed Bullet'}</td>
+                            <td><strong>${cam.height ? cam.height + ' ft' : 'Not Specified'}</strong></td>
+                            <td>${cam.notes || '<span style="color:#aaa; font-style:italic;">No notes provided</span>'}</td>
+                            <td>${photosHtml}</td>
+                        </tr>
+                    `;
+                }).join('');
+
+                reportContent.innerHTML = `
+                    <p style="margin-bottom:12px; font-size:0.85rem; color:var(--text-dark);">
+                        <strong>Summary:</strong> Found <strong>${servicingCams.length}</strong> camera(s) requiring technician servicing or equipment attention.
+                    </p>
+                    <table class="report-table">
+                        <thead>
+                            <tr>
+                                <th>Camera Name / Status</th>
+                                <th>Camera Type</th>
+                                <th>Height (Access Requirement)</th>
+                                <th>Notes / Servicing Issue</th>
+                                <th>Reference Photos</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${rowsHtml}
+                        </tbody>
+                    </table>
+                `;
+            }
+
+            reportModal.classList.add('active');
+        }
+
+        window.closeReportModal = () => {
+            document.getElementById('report-modal').classList.remove('active');
+        };
+
+        // Realtime Cloud Data Sync
+        function listenToCloudData() {
+            onSnapshot(collection(db, "cameras"), (snapshot) => {
+                cameras = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                renderMap();
+                if (selectedEntity && selectedEntity.type === 'camera') selectCamera(selectedEntity.id, false);
+            });
+
+            onSnapshot(collection(db, "buildings"), (snapshot) => {
+                buildings = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                renderMap();
+                if (selectedEntity && selectedEntity.type === 'building') selectBuilding(selectedEntity.id, false);
+            });
+        }
+
+        async function saveCameraToCloud(cam) {
+            await setDoc(doc(db, "cameras", cam.id), cam, { merge: true });
+        }
+
+        async function saveBuildingToCloud(bld) {
+            await setDoc(doc(db, "buildings", bld.id), bld, { merge: true });
+        }
+
+        // Filter Controls
+        window.setFilter = (filter) => {
+            activeFilter = filter;
+            document.querySelectorAll('.filter-btn').forEach(btn => {
+                btn.classList.toggle('active', btn.textContent.toLowerCase().includes(filter));
+            });
+            renderMap();
+        };
+
+        function isCamVisible(cam) {
+            if (activeFilter === 'all') return true;
+            if (activeFilter === 'active') return cam.status === 'active' || cam.status === 'recording';
+            if (activeFilter === 'service') return cam.status === 'offline' || cam.status === 'maintenance';
+            return true;
+        }
+
+        // Render Map
+        function renderMap() {
+            buildingsLayer.innerHTML = '';
+            camLayer.innerHTML = '';
+            svgOverlay.innerHTML = '';
+
+            // Render Buildings
+            buildings.forEach(bld => {
+                const el = document.createElement('div');
+                el.className = `building-block ${selectedEntity && selectedEntity.id === bld.id ? 'selected' : ''} ${bld.isLocked ? 'is-locked' : ''}`;
+                el.style.left = `${bld.x}px`;
+                el.style.top = `${bld.y}px`;
+                el.style.width = `${bld.w}px`;
+                el.style.height = `${bld.h}px`;
+                el.innerHTML = `<span>${bld.name}</span>${bld.isLocked ? '<span class="lock-indicator">🔒</span>' : ''}`;
+
+                el.addEventListener('mousedown', (e) => {
+                    e.stopPropagation();
+                    if (!bld.isLocked) {
+                        draggingEntity = { type: 'building', id: bld.id };
+                    }
+                    selectBuilding(bld.id);
+                });
+
+                buildingsLayer.appendChild(el);
+            });
+
+            // Render Vision Cones Overlaid On Top Of Buildings
+            cameras.filter(isCamVisible).forEach(cam => {
+                const strokeColor = cam.type === 'Keypad' ? '#9b59b6' : getStatusColor(cam.status);
+                const conePath = createVisionConePath(cam.x, cam.y, cam.angle, cam.fov, cam.dist);
+                const pathEl = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+                pathEl.setAttribute('d', conePath);
+                pathEl.setAttribute('fill', strokeColor);
+                pathEl.setAttribute('fill-opacity', '0.45');
+                pathEl.setAttribute('stroke', strokeColor);
+                pathEl.setAttribute('stroke-width', '2.5');
+                
+                if (cam.status === 'maintenance' || cam.status === 'offline') {
+                    pathEl.setAttribute('class', 'cone-blinking');
+                }
+
+                svgOverlay.appendChild(pathEl);
+
+                // Render Camera Nodes
+                const node = document.createElement('div');
+                node.className = `camera-node ${selectedEntity && selectedEntity.id === cam.id ? 'selected' : ''} ${cam.isLocked ? 'is-locked' : ''}`;
+                node.style.left = `${cam.x}px`;
+                node.style.top = `${cam.y}px`;
+                node.setAttribute('data-status', cam.status);
+                node.setAttribute('data-type', cam.type || 'Fixed Bullet');
+                node.setAttribute('data-name', cam.name);
+                
+                node.innerHTML = `<svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 14.5v-9l6 4.5-6 4.5z"/></svg>${cam.isLocked ? '<span class="lock-indicator">🔒</span>' : ''}`;
+
+                node.addEventListener('mousedown', (e) => {
+                    e.stopPropagation();
+                    if (!cam.isLocked) {
+                        draggingEntity = { type: 'camera', id: cam.id };
+                    }
+                    selectCamera(cam.id);
+                });
+
+                camLayer.appendChild(node);
+            });
+        }
+
+        function createVisionConePath(cx, cy, angle, fov, radius) {
+            if (fov >= 360) {
+                return `M ${cx - radius} ${cy} A ${radius} ${radius} 0 1 0 ${cx + radius} ${cy} A ${radius} ${radius} 0 1 0 ${cx - radius} ${cy}`;
+            }
+            const startAngle = (angle - fov / 2) * Math.PI / 180;
+            const endAngle = (angle + fov / 2) * Math.PI / 180;
+
+            const x1 = cx + radius * Math.cos(startAngle);
+            const y1 = cy + radius * Math.sin(startAngle);
+            const x2 = cx + radius * Math.cos(endAngle);
+            const y2 = cy + radius * Math.sin(endAngle);
+
+            const largeArc = fov > 180 ? 1 : 0;
+            return `M ${cx} ${cy} L ${x1} ${y1} A ${radius} ${radius} 0 ${largeArc} 1 ${x2} ${y2} Z`;
+        }
+
+        function getStatusColor(status) {
+            switch(status) {
+                case 'active':      return '#10b981'; // Vivid Green (Functional)
+                case 'recording':   return '#026af2'; // Bright Blue (Functional)
+                case 'maintenance': return '#f59e0b'; // Amber / Warning Yellow
+                case 'offline':     return '#ef4444'; // High-Contrast Red (Non-functional)
+                default:            return '#026af2';
+            }
+        }
+
+        // Inspector Controls
+        function selectBuilding(id, updateForm = true) {
+            selectedEntity = { type: 'building', id: id };
+            const bld = buildings.find(b => b.id === id);
+            if (!bld) return;
+
+            document.getElementById('sidebar-title').innerText = `Building: ${bld.name}`;
+            const sidebarBody = document.getElementById('sidebar-body');
+
+            if (updateForm) {
+                sidebarBody.innerHTML = `
+                    <div class="toggle-row">
+                        <label for="bld-locked">🔒 Lock Map Position</label>
+                        <input type="checkbox" id="bld-locked" ${bld.isLocked ? 'checked' : ''}>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Building Label</label>
+                        <input type="text" id="bld-name" value="${bld.name}">
+                    </div>
+                    <div class="form-group">
+                        <label>Width: <span class="val-badge" id="bld-w-val">${bld.w}px</span></label>
+                        <input type="range" id="bld-w" min="30" max="10000" step="10" value="${bld.w}">
+                    </div>
+                    <div class="form-group">
+                        <label>Height: <span class="val-badge" id="bld-h-val">${bld.h}px</span></label>
+                        <input type="range" id="bld-h" min="30" max="10000" step="10" value="${bld.h}">
+                    </div>
+                    <button class="btn-danger" id="delete-bld-btn">Delete Building</button>
+                `;
+
+                document.getElementById('bld-locked').onchange = (e) => { bld.isLocked = e.target.checked; saveBuildingToCloud(bld); renderMap(); };
+                document.getElementById('bld-name').onchange = (e) => { bld.name = e.target.value; saveBuildingToCloud(bld); renderMap(); };
+                document.getElementById('bld-w').oninput = (e) => { bld.w = parseFloat(e.target.value); document.getElementById('bld-w-val').innerText = `${bld.w}px`; renderMap(); };
+                document.getElementById('bld-w').onchange = () => saveBuildingToCloud(bld);
+                document.getElementById('bld-h').oninput = (e) => { bld.h = parseFloat(e.target.value); document.getElementById('bld-h-val').innerText = `${bld.h}px`; renderMap(); };
+                document.getElementById('bld-h').onchange = () => saveBuildingToCloud(bld);
+
+                document.getElementById('delete-bld-btn').onclick = async () => {
+                    await deleteDoc(doc(db, "buildings", bld.id));
+                    resetInspector();
+                };
+            }
+            renderMap();
+        }
+
+        function selectCamera(id, updateForm = true) {
+            selectedEntity = { type: 'camera', id: id };
+            const cam = cameras.find(c => c.id === id);
+            if (!cam) return;
+
+            document.getElementById('sidebar-title').innerText = `Camera: ${cam.name}`;
+            const sidebarBody = document.getElementById('sidebar-body');
+
+            if (updateForm) {
+                sidebarBody.innerHTML = `
+                    <div class="toggle-row">
+                        <label for="cam-locked">🔒 Lock Map Position</label>
+                        <input type="checkbox" id="cam-locked" ${cam.isLocked ? 'checked' : ''}>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Camera Name / ID</label>
+                        <input type="text" id="cam-name" value="${cam.name}">
+                    </div>
+                    <div class="form-group">
+                        <label>Status</label>
+                        <select id="cam-status">
+                            <option value="active" ${cam.status==='active'?'selected':''}>Active / Online</option>
+                            <option value="recording" ${cam.status==='recording'?'selected':''}>Recording / Motion</option>
+                            <option value="maintenance" ${cam.status==='maintenance'?'selected':''}>Maintenance Required</option>
+                            <option value="offline" ${cam.status==='offline'?'selected':''}>Offline / Error</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Camera Type</label>
+                        <select id="cam-type">
+                            <option value="Fixed Bullet" ${cam.type==='Fixed Bullet'?'selected':''}>Fixed Bullet</option>
+                            <option value="Dome" ${cam.type==='Dome'?'selected':''}>Dome</option>
+                            <option value="PTZ Camera" ${cam.type==='PTZ Camera'?'selected':''}>PTZ Camera</option>
+                            <option value="360 Fisheye" ${cam.type==='360 Fisheye'?'selected':''}>360° Fisheye</option>
+                            <option value="Keypad" ${cam.type==='Keypad'?'selected':''}>Keypad Embedded</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Mounting Height (ft)</label>
+                        <input type="number" id="cam-height" placeholder="e.g., 12" value="${cam.height || ''}">
+                    </div>
+
+                    <div class="form-group">
+                        <label>Notes & Servicing Log</label>
+                        <textarea id="cam-notes" placeholder="Log maintenance, IP address, issues, or details...">${cam.notes || ''}</textarea>
+                    </div>
+
+                    <hr style="border:0; border-top: 1px solid #eee; margin: 4px 0;">
+
+                    <div class="form-group">
+                        <label>Orientation Angle: <span class="val-badge" id="angle-val">${cam.angle}°</span></label>
+                        <input type="range" id="cam-angle" min="0" max="360" value="${cam.angle}">
+                    </div>
+                    <div class="form-group">
+                        <label>Field of View: <span class="val-badge" id="fov-val">${cam.fov}°</span></label>
+                        <input type="range" id="cam-fov" min="15" max="360" value="${cam.fov}">
+                    </div>
+                    <div class="form-group">
+                        <label>Vision Radius: <span class="val-badge" id="dist-val">${cam.dist}px</span></label>
+                        <input type="range" id="cam-dist" min="50" max="1000" step="10" value="${cam.dist}">
+                    </div>
+
+                    <hr style="border:0; border-top: 1px solid #eee; margin: 4px 0;">
+
+                    <div class="form-group">
+                        <label>Angle Reference Photos</label>
+                        <button class="btn-action" id="add-photo-btn" style="width:100%; margin-top:2px;">+ Add Photo URL</button>
+                        <div class="image-grid" id="photo-grid"></div>
+                    </div>
+
+                    <button class="btn-danger" id="delete-cam-btn">Delete Camera</button>
+                `;
+
+                document.getElementById('cam-locked').onchange = (e) => { cam.isLocked = e.target.checked; saveCameraToCloud(cam); renderMap(); };
+                document.getElementById('cam-name').onchange = (e) => { cam.name = e.target.value; saveCameraToCloud(cam); renderMap(); };
+                document.getElementById('cam-status').onchange = (e) => { cam.status = e.target.value; saveCameraToCloud(cam); };
+                document.getElementById('cam-type').onchange = (e) => { cam.type = e.target.value; saveCameraToCloud(cam); };
+                document.getElementById('cam-height').onchange = (e) => { cam.height = e.target.value; saveCameraToCloud(cam); };
+                document.getElementById('cam-notes').onchange = (e) => { cam.notes = e.target.value; saveCameraToCloud(cam); };
+                document.getElementById('cam-angle').oninput = (e) => { cam.angle = parseFloat(e.target.value); document.getElementById('angle-val').innerText = `${cam.angle}°`; renderMap(); };
+                document.getElementById('cam-angle').onchange = () => saveCameraToCloud(cam);
+                document.getElementById('cam-fov').oninput = (e) => { cam.fov = parseFloat(e.target.value); document.getElementById('fov-val').innerText = `${cam.fov}°`; renderMap(); };
+                document.getElementById('cam-fov').onchange = () => saveCameraToCloud(cam);
+                document.getElementById('cam-dist').oninput = (e) => { cam.dist = parseFloat(e.target.value); document.getElementById('dist-val').innerText = `${cam.dist}px`; renderMap(); };
+                document.getElementById('cam-dist').onchange = () => saveCameraToCloud(cam);
+
+                document.getElementById('delete-cam-btn').onclick = async () => {
+                    await deleteDoc(doc(db, "cameras", cam.id));
+                    resetInspector();
+                };
+
+                document.getElementById('add-photo-btn').onclick = async () => {
+                    const url = prompt("Paste image URL for camera angle photo:");
+                    if (!url) return;
+                    if (!cam.photos) cam.photos = [];
+                    cam.photos.push(url);
+                    saveCameraToCloud(cam);
+                    renderPhotos(cam.photos);
+                };
+
+                renderPhotos(cam.photos || []);
+            }
+            renderMap();
+        }
+
+        function renderPhotos(photos) {
+            const grid = document.getElementById('photo-grid');
+            if (!grid) return;
+            grid.innerHTML = '';
+            photos.forEach((src, idx) => {
+                const card = document.createElement('div');
+                card.className = 'img-card';
+                card.onclick = () => openLightbox(src);
+                card.innerHTML = `<img src="${src}"><div class="label">Angle #${idx + 1}</div>`;
+                grid.appendChild(card);
+            });
+        }
+
+        window.openLightbox = (src) => {
+            const modal = document.getElementById('photo-modal');
+            const img = document.getElementById('lightbox-img');
+            img.src = src;
+            modal.classList.add('active');
+        };
+
+        window.closeLightbox = (e) => {
+            if (e.target.id === 'photo-modal' || e.target.classList.contains('lightbox-close')) {
+                document.getElementById('photo-modal').classList.remove('active');
+            }
+        };
+
+        function resetInspector() {
+            selectedEntity = null;
+            document.getElementById('sidebar-title').innerText = 'Inspector';
+            document.getElementById('sidebar-body').innerHTML = `
+                <div style="font-size:0.8rem; color:var(--text-muted); text-align:center; margin-top:20px;">
+                    Select a camera or building block to drag, lock, resize, or edit details.<br><br>
+                    <small style="color:var(--text-subtle);">Shortcuts: <b>Del</b>/<b>Backspace</b> to delete, <b>Arrow Keys</b> to nudge position.</small>
+                </div>`;
+            renderMap();
+        }
+
+        // Add Entities Controls
+        document.getElementById('add-block-btn').onclick = async () => {
+            const newId = 'bld-' + Date.now();
+            const newBuilding = {
+                id: newId,
+                name: `Building ${buildings.length + 1}`,
+                x: Math.abs(panX) + 150,
+                y: Math.abs(panY) + 150,
+                w: 220,
+                h: 100,
+                isLocked: false
+            };
+            await saveBuildingToCloud(newBuilding);
+            selectBuilding(newId);
+        };
+
+        document.getElementById('add-cam-btn').onclick = async () => {
+            const newId = 'cam-' + Date.now();
+            const newCam = {
+                id: newId,
+                name: `Camera ${cameras.length + 1}`,
+                x: Math.abs(panX) + 200,
+                y: Math.abs(panY) + 200,
+                angle: 90,
+                fov: 60,
+                dist: 140,
+                status: 'active',
+                type: 'Fixed Bullet',
+                isLocked: false,
+                height: '',
+                notes: '',
+                photos: []
+            };
+            await saveCameraToCloud(newCam);
+            selectCamera(newId);
+        };
+
+        // Start Firebase Realtime Listener
+        listenToCloudData();
+    </script>
+</body>
+</html>
